@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtesting Configuration</title>
+    <link rel="stylesheet" href="/static/allover.css">
+    
+</head>
+<body>
+    <div class="background"></div>
+  <div class="overlay"></div>
+
+    <div class="container1">
+        <a href="/backtest" id="back-btn" class="back-btn">← Back to Home</a>
+
+        <div class="header">
+            <h1>🔬 Backtesting Configuration</h1>
+            <p>Upload your data and configure backtest parameters</p>
+        </div>
+        <div class="frosted-form">
+            <h2 class="title">⚙️ Backtest Parameters</h2>
+            <div class="section">
+                <label for="symbol" class="label">Asset Name</label>
+                <input type="text" id="symbol" name="symbol" value="RELIANCE.NS" required class="input"/>
+              </div>
+
+                <div class="section grid2">
+                    <div>
+                        <label for="symbol" class="label">Initial Capital (₹)</label>
+                        <input type="number" id="capital" name="capital" value="100000" required class="input"/>
+                    </div>
+                    <div>
+                    <label for="quantity" class="label">Quantity per Trade</label>
+                    <input type="number" id="quantity" name="quantity" value="10" required class="input"/>
+                    </div>
+                </div>
+
+                <div class="section grid2">
+                    <div class="relative">
+                        <label for="transactionCost" class="label">Transaction Cost (%)</label>
+                        <input type="number" id="transactionCost" name="transactionCost" value="0.05" required class="input"/>
+                        <span class="unit">%</span>
+                    </div>
+                    <div class="relative">
+                        <label for="slippage" class="label">Slippage (%)</label>
+                        <input type="number" id="slippage" name="slippage" value="0.01" required class="input"/>
+                        <span class="unit">%</span>
+                    </div>
+                </div>
+                <div class="section1 file-container">
+                    <input type="file" id="csv_file" name="csv_file" accept=".csv" class="inputfile"/>
+                    <label for="csv_file" class="file-label">Choose CSV File</label>
+                    <div class="file-name" id="fileName"></div>
+                
+                    <!-- Progress bar container -->
+                    <div id="upload-progress" class="upload-progress">
+                        <div class="progress-bar"></div>
+                    </div>
+                </div>
+
+ 
+
+            <div id="errorMsg" class="error"></div>
+            <div class="button-wrapper">
+                <button type="submit" class="run-btn" id="runBtn" onclick="runBacktest()" >
+                    🚀 Run Backtest
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let priceFile = null;
+        const progressContainer = document.getElementById('upload-progress');
+        const progressBar = progressContainer.querySelector('.progress-bar');
+        const fileInput = document.getElementById('csv_file');
+
+document.getElementById('csv_file').addEventListener('change', function(e) {
+    priceFile = e.target.files[0];
+    if (priceFile) {
+        const sizeMB = (priceFile.size / (1024 * 1024)).toFixed(2);
+        document.getElementById('fileName').textContent = `✓ ${priceFile.name} (${sizeMB} MB)`;
+        document.getElementById('runBtn').disabled = false;
+    }
+});
+fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    // Show progress bar and animate
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+
+    let progress = 0;
+    const interval = setInterval(() => {
+        if (progress >= 100) {
+            clearInterval(interval);
+            // optional: hide progress after a short delay
+            setTimeout(() => { progressContainer.style.display = 'none'; }, 1000);
+        } else {
+            progress += 5; // increase this for faster/slower animation
+            progressBar.style.width = progress + '%';
+        }
+    }, 50);
+});
+async function runBacktest() {
+    const btn = document.getElementById('runBtn');
+    const errorMsg = document.getElementById('errorMsg');
+
+    if (!priceFile) {
+        errorMsg.textContent = 'Please upload a CSV file first!';
+        errorMsg.style.display = 'block';
+        return;
+    }
+
+    // Change button to "Processing..."
+    btn.disabled = true;
+    btn.textContent = '⏳ Processing...';
+    errorMsg.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('priceData', priceFile);
+    formData.append('initialCapital', document.getElementById('capital').value);
+    formData.append('quantity', document.getElementById('quantity').value);
+    formData.append('transactionCost', document.getElementById('transactionCost').value);
+    formData.append('slippage', document.getElementById('slippage').value);
+
+    try {
+        const response = await fetch('/run_backtest', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Backtest failed');
+
+        // Redirect on success
+        window.location.href = '/results';
+    } catch (error) {
+        errorMsg.textContent = `Error: ${error.message}`;
+        errorMsg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '🚀 Run Backtest';
+    }
+}
+    </script>
+</body>
+</html>

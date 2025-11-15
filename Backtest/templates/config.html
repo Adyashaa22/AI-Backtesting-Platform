@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure Paper Trading</title>
+    <link rel="stylesheet" href="/static/allover.css">
+   
+    <script>
+        function presetByStock() {
+            const map = {
+                'RELIANCE': 2500,
+                'TCS': 3800,
+                'INFY': 1600,
+                'HDFCBANK': 1500,
+                'ICICIBANK': 1200,
+                'SBIN': 750,
+                'HINDUNILVR': 2500,
+                'ITC': 470,
+                'BHARTIARTL': 1200,
+                'AXISBANK': 1100
+            };
+            const s = document.getElementById('stock');
+            const sel = s.value;
+            const note = document.getElementById('price-note');
+            note.textContent = 'Simulated starting price: ₹' + (map[sel] || 190);
+        }
+        window.addEventListener('DOMContentLoaded', presetByStock);
+    </script>
+    </head>
+<body>
+    <div class="background"></div>  
+    <div class="overlay">  </div>
+    <div class="container1">
+        <a href="/" id="back-btn" class="back-btn">← Back to Home</a>
+        <div class="header">
+        <h1>Paper Trading Configuration</h1>
+        </div>
+        <form  class="frosted-form" method="POST" action="/start">
+            <h2 class="title">⚙️ PaperTrading Parameters</h2>
+            <div class="section">
+                <div class="field">
+                    <label for="stock" class="label">Stock</label>
+                    <select id="symbol" class="input" name="stock" onchange="presetByStock()" required>
+                        <option value="RELIANCE">RELIANCE</option>
+                        <option value="TCS">TCS</option>
+                        <option value="INFY">INFY</option>
+                        <option value="HDFCBANK">HDFCBANK</option>
+                        <option value="ICICIBANK">ICICIBANK</option>
+                        <option value="SBIN">SBIN</option>
+                        <option value="HINDUNILVR">HINDUNILVR</option>
+                        <option value="ITC">ITC</option>
+                        <option value="BHARTIARTL">BHARTIARTL</option>
+                        <option value="AXISBANK">AXISBANK</option>
+                    </select>
+                    <div class="label" id="price-note">Simulated starting price: ₹190</div>
+                </div>
+                </div>
+                <div class="section grid2">
+                <div class="relative">
+                    <label for="initial_balance" class="label">Initial Balance (₹)</label>
+                    <input type="number" id="capital" name="initial_balance" min="1000" step="1000" value="100000" required class="input">
+                </div>
+                <div class="relative">
+                    <label for="timeframe" class="label">Timeframe (minutes)</label>
+                    <select id="timeframe" name="timeframe" required class="input">
+                        <option value="1">1</option>
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+                <div class="relative">
+                    <label for="brokerage" class="label">Brokerage (%)</label>
+                    <input type="number" id="capital" name="brokerage" min="0" step="0.01" value="0.05" required class="input">
+                    <div class="label">Percent of trade value per side.</div>
+                </div>
+                
+                <div class="relative">
+                    <label for="quantity" class="label">Order Quantity</label>
+                    <input type="number" id="capital" name="quantity" min="1" step="1" value="10" required class="input" class="input">
+                </div>
+            </div>
+            <div class="arelative">
+                <div class="label1">
+                    <span>These settings will apply to the live simulation.</span>
+                </div>
+                <div class="button-wrapper">
+                <button class="run-btn" id="fetchBtn" type="submit">Start Paper Trading →</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
+

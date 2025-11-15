@@ -1,0 +1,4 @@
+Trade ID,Action,Timestamp,Price,Quantity,Entry Price,Exit Price,Entry Time,Exit Time,Holding Period (min),Gross P&L,Gross P&L %,Fees,Net P&L,Net P&L %,Status
+1,BUY,2025-11-09 20:27:03,2498.51,10,2498.51,,2025-11-09 20:27:03,,,,,,,,OPEN
+1,SELL,2025-11-09 20:29:03,2499.56,10,2498.51,2499.56,2025-11-09 20:26:09,2025-11-09 20:29:03,0.1,10.5,0.04,24.99,-14.49,-0.06,LOSS
+2,BUY,2025-11-09 20:31:03,2499.67,10,2499.67,,2025-11-09 20:31:03,,,,,,,,OPEN

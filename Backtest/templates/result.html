@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtest Results</title>
+    <link rel="stylesheet" href="/static/allover.css">
+    <style>
+        body {
+            overflow-x: hidden !important;
+        }
+        </style>
+</head>
+<body>
+    <div class="container-res">
+        <div class="background"></div>
+        <div class="overlay"></div>
+        <a href="/backtesting" class="back-link">← New Backtest</a>
+
+        <div class="header">
+            <h1>📊 Backtest Results</h1>
+            <p>Performance metrics and analysis</p>
+        </div>
+
+        <div class="info-banner" id="infoBanner"></div>
+
+        <div class="card">
+            <h2 class="section-title">📈 View Charts</h2>
+            <div class="chart-buttons">
+                <button class="chart-btn" onclick="location.href='/price_chart'">
+                    <span class="icon">📉</span>
+                    <span>Price Chart with Signals</span>
+                </button>
+                <button class="chart-btn" onclick="location.href='/equity_chart'">
+                    <span class="icon">💰</span>
+                    <span>Equity Curve</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">📊 Performance Metrics</h2>
+            <div class="metrics-grid" id="metricsGrid"></div>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">📥 Download Results</h2>
+            <div class="download-section">
+                <button class="download-btn" onclick="downloadMetrics()">
+                    📊 Download Metrics CSV
+                </button>
+                <button class="download-btn" onclick="downloadTradelog()">
+                    💼 Download Trade Log CSV
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">📝 Trade Log</h2>
+            <div class="trade-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Timestamp</th>
+                            <th>Action</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>P&L</th>
+                            <th>P&L %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradeLogBody">
+                        <tr>
+                            <td colspan="7" class="loading-trades">Loading trades...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="trade-pagination" id="tradePagination"></div>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let backtestData = null;
+        let currentTradePage = 0;
+        let totalTradePages = 0;
+        let allTrades = [];
+
+        // Load data from server via API
+        window.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/get_results');
+                
+                if (!response.ok) {
+                    throw new Error('No backtest data found');
+                }
+
+                backtestData = await response.json();
+                sessionId = backtestData.sessionId;
+                displayResults(backtestData);
+                
+                // Load trades progressively
+                await loadTrades(0);
+                
+            } catch (error) {
+                console.error('Error loading results:', error);
+                alert('No backtest data found. Redirecting to configuration page.');
+                window.location.href = '/backtesting';
+            }
+        });
+
+        function displayResults(data) {
+            // Display data info
+            const info = data.dataInfo;
+            document.getElementById('infoBanner').innerHTML = `
+                <h3>📊 Data Processing Summary</h3>
+                <div class="info-item">
+                    <strong>Total Data Points:</strong> ${info.totalDataPoints.toLocaleString()} bars
+                </div>
+                <div class="info-item">
+                    <strong>Date Range:</strong> ${info.dateRange.start} to ${info.dateRange.end}
+                </div>
+                <div class="info-item">
+                    <strong>Total Trades:</strong> ${info.totalTrades.toLocaleString()}
+                </div>
+                <div class="info-item">
+                    <strong>Backtest Time:</strong> ${info.backtestTime} seconds
+                </div>
+            `;
+
+            // Display metrics
+            const m = data.metrics;
+            const metricsHTML = `
+                <div class="metric-card">
+                    <div class="metric-label">Initial Capital</div>
+                    <div class="metric-value">₹${m.initialCapital.toLocaleString()}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Final Value</div>
+                    <div class="metric-value">₹${m.finalValue.toFixed(2).toLocaleString()}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Return</div>
+                    <div class="metric-value ${m.totalReturn >= 0 ? 'positive' : 'negative'}">
+                        ${m.totalReturn.toFixed(2)}%
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Sharpe Ratio</div>
+                    <div class="metric-value">${m.sharpeRatio.toFixed(2)}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Max Drawdown</div>
+                    <div class="metric-value negative">${m.maxDrawdown.toFixed(2)}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Trades</div>
+                    <div class="metric-value">${m.totalTrades}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Win Rate</div>
+                    <div class="metric-value">${m.winRate.toFixed(2)}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total P&L</div>
+                    <div class="metric-value ${m.totalPnL >= 0 ? 'positive' : 'negative'}">
+                        ₹${m.totalPnL.toFixed(2)}
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Profit Factor</div>
+                    <div class="metric-value">${m.profitFactor < 999 ? m.profitFactor.toFixed(2) : '∞'}</div>
+                </div>
+            `;
+            document.getElementById('metricsGrid').innerHTML = metricsHTML;
+        }
+
+        async function loadTrades(page) {
+            try {
+                const response = await fetch(`/api/get_trades/${sessionId}/${page}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load trades');
+                }
+
+                const data = await response.json();
+                currentTradePage = data.pagination.currentPage;
+                totalTradePages = data.pagination.totalPages;
+                
+                displayTradeLog(data.trades, data.pagination);
+                
+            } catch (error) {
+                console.error('Error loading trades:', error);
+                const tbody = document.getElementById('tradeLogBody');
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #ef4444;">Error loading trades</td></tr>';
+            }
+        }
+
+        function displayTradeLog(trades, pagination) {
+            const tbody = document.getElementById('tradeLogBody');
+            tbody.innerHTML = '';
+
+            if (trades.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="7" style="text-align: center; padding: 30px; color: #999;">No trades executed</td>';
+                tbody.appendChild(row);
+                updatePagination(pagination);
+                return;
+            }
+
+            // Calculate starting index for trade numbering
+            const startIndex = pagination.currentPage * pagination.tradesPerPage;
+
+            trades.forEach((trade, index) => {
+                const row = document.createElement('tr');
+                const pnl = trade.pnl || 0;
+                const pnlPct = trade.pnl_pct || 0;
+                const tradeNumber = startIndex + index + 1;
+                
+                row.innerHTML = `
+                    <td>${tradeNumber}</td>
+                    <td>${trade.timestamp}</td>
+                    <td class="action-${trade.action.toLowerCase()}">${trade.action}</td>
+                    <td>${trade.quantity}</td>
+                    <td>₹${trade.price.toFixed(2)}</td>
+                    <td class="${pnl >= 0 ? 'positive' : 'negative'}">
+                        ${trade.action === 'SELL' ? '₹' + pnl.toFixed(2) : '-'}
+                    </td>
+                    <td class="${pnlPct >= 0 ? 'positive' : 'negative'}">
+                        ${trade.action === 'SELL' ? pnlPct.toFixed(2) + '%' : '-'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            updatePagination(pagination);
+        }
+
+        function updatePagination(pagination) {
+            const paginationDiv = document.getElementById('tradePagination');
+            
+            if (pagination.totalPages === 0) {
+                paginationDiv.innerHTML = '';
+                return;
+            }
+
+            paginationDiv.innerHTML = `
+                <button class="pagination-btn" onclick="previousTradePage()" ${currentTradePage === 0 ? 'disabled' : ''}>
+                    ← Previous
+                </button>
+                <div class="pagination-info">
+                    Page ${currentTradePage + 1} of ${pagination.totalPages} 
+                    (${pagination.totalTrades.toLocaleString()} total trades)
+                </div>
+                <button class="pagination-btn" onclick="nextTradePage()" ${currentTradePage >= pagination.totalPages - 1 ? 'disabled' : ''}>
+                    Next →
+                </button>
+            `;
+        }
+
+        function previousTradePage() {
+            if (currentTradePage > 0) {
+                loadTrades(currentTradePage - 1);
+            }
+        }
+
+        function nextTradePage() {
+            if (currentTradePage < totalTradePages - 1) {
+                loadTrades(currentTradePage + 1);
+            }
+        }
+
+        function downloadMetrics() {
+            window.location.href = `/api/download_metrics/${sessionId}`;
+        }
+
+        function downloadTradelog() {
+            window.location.href = `/api/download_tradelog/${sessionId}`;
+        }
+    </script>
+</body>
+</html>

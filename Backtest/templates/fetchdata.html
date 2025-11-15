@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch Market Data</title>
+    <link rel="stylesheet" href="/static/allover.css">
+</head>
+<body>
+<div class="background"></div>
+<div class="overlay"></div>
+
+<div class="container1">
+    <a href="/" class="back-btn">← Back to Home</a>
+
+    <div class="header">
+        <h1>📦 Fetch Market Data</h1>
+        <p>Select an asset and choose a time frame to automatically fetch SmartAPI data for backtesting</p>
+    </div>
+
+    <div class="frosted-form">
+        <h2 class="title">⚙️ Data Configuration</h2>
+
+        <!-- Asset Dropdown -->
+        <div class="section">
+            <label for="symbol" class="label">Select Asset</label>
+            <select id="symbol" class="input">
+                <option value="">-- Choose an Asset --</option>
+                <option value="RELIANCE-EQ">RELIANCE (NSE)</option>
+                <option value="TCS-EQ">TCS (NSE)</option>
+                <option value="INFY-EQ">INFOSYS (NSE)</option>
+                <option value="HDFCBANK-EQ">HDFC BANK (NSE)</option>
+                <option value="SBIN-EQ">SBI (NSE)</option>
+                <option value="ICICIBANK-EQ">ICICI BANK (NSE)</option>
+                <option value="ITC-EQ">ITC (NSE)</option>
+                <option value="AXISBANK-EQ">AXIS BANK (NSE)</option>
+                <option value="LT-EQ">LARSEN & TOUBRO (NSE)</option>
+                <option value="WIPRO-EQ">WIPRO (NSE)</option>
+            </select>
+        </div>
+
+        <!-- Time Frame Dropdown -->
+        <div class="section">
+            <label for="timeframe" class="label">Select Time Frame</label>
+            <select id="timeframe" class="input">
+                <option value="1m">1 Minute</option>
+                <option value="3m">3 Minute</option>
+                <option value="5m">5 Minute</option>
+                <option value="10m">10 Minute</option>
+                <option value="15m">15 Minute</option>
+                <option value="30m">30 Minute</option>
+                <option value="1h">1 Hour</option>
+                <option value="1d">1 Day</option>
+            </select>
+        </div>
+
+        <!-- Backtest Parameters -->
+        <h2 class="title" style="margin-top: 2rem; margin-bottom: 1rem;">⚙️ Backtest Parameters</h2>
+
+        <div class="section grid2">
+            <div>
+                <label for="capital" class="label">Initial Capital (₹)</label>
+                <input type="number" id="capital" name="capital" value="100000" required class="input"/>
+            </div>
+            <div>
+                <label for="quantity" class="label">Quantity per Trade</label>
+                <input type="number" id="quantity" name="quantity" value="10" required class="input"/>
+            </div>
+        </div>
+
+        <div class="section grid2">
+            <div class="relative">
+                <label for="transactionCost" class="label">Transaction Cost (%)</label>
+                <input type="number" id="transactionCost" name="transactionCost" value="0.05" step="0.001" required class="input"/>
+                <span class="unit">%</span>
+            </div>
+            <div class="relative">
+                <label for="slippage" class="label">Slippage (%)</label>
+                <input type="number" id="slippage" name="slippage" value="0.01" step="0.001" required class="input"/>
+                <span class="unit">%</span>
+            </div>
+        </div>
+
+        <div id="errorMsg" class="error"></div>
+
+        <div class="button-wrapper">
+            <button class="run-btn" id="fetchBtn" onclick="fetchData()">⚙️ Fetch & Run Backtest</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// SmartAPI official maximum days per request for each timeframe
+const maxDaysMap = {
+    '1m': 30,    // ONE_MINUTE: 30 days
+    '3m': 60,    // THREE_MINUTE: 60 days
+    '5m': 100,   // FIVE_MINUTE: 100 days
+    '10m': 100,  // TEN_MINUTE: 100 days
+    '15m': 200,  // FIFTEEN_MINUTE: 200 days
+    '30m': 200,  // THIRTY_MINUTE: 200 days
+    '1h': 400,   // ONE_HOUR: 400 days
+    '1d': 2000   // ONE_DAY: 2000 days
+};
+
+function getMaxDaysForTimeframe(timeframe) {
+    return maxDaysMap[timeframe] || 100; // Default to 100 if not found
+}
+
+async function fetchData() {
+    const btn = document.getElementById('fetchBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    
+    // Get form values
+    const symbol = document.getElementById('symbol').value;
+    const timeframe = document.getElementById('timeframe').value;
+    const capital = document.getElementById('capital').value;
+    const quantity = document.getElementById('quantity').value;
+    const transactionCost = document.getElementById('transactionCost').value;
+    const slippage = document.getElementById('slippage').value;
+    
+    // Validation
+    if (!symbol) {
+        errorMsg.textContent = 'Please select an asset!';
+        errorMsg.style.display = 'block';
+        return;
+    }
+    
+    if (!timeframe) {
+        errorMsg.textContent = 'Please select a time frame!';
+        errorMsg.style.display = 'block';
+        return;
+    }
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.textContent = '⏳ Fetching Data & Running Backtest...';
+    errorMsg.style.display = 'none';
+    
+    try {
+        // Get max days for selected timeframe
+        const daysBack = getMaxDaysForTimeframe(timeframe);
+        
+        // Prepare request data
+        const requestData = {
+            symbol: symbol,
+            timeframe: timeframe,
+            initialCapital: parseFloat(capital),
+            quantity: parseInt(quantity),
+            transactionCost: parseFloat(transactionCost),
+            slippage: parseFloat(slippage),
+            daysBack: daysBack  // Use maximum allowed days for this timeframe
+        };
+        
+        // Call API
+        const response = await fetch('/api/fetch_and_run_backtest', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch data and run backtest');
+        }
+        
+        // Success - redirect to results page
+        window.location.href = '/results';
+        
+    } catch (error) {
+        console.error('Error:', error);
+        errorMsg.textContent = `Error: ${error.message}`;
+        errorMsg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '⚙️ Fetch & Run Backtest';
+    }
+}
+</script>
+</body>
+</html>

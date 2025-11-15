@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Chart with Signals</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <link rel="stylesheet" href="/static/allover.css">
+</head>
+<body>
+    <div class="container-chart1">
+        <div class="background"></div>
+        <div class="overlay"></div>
+        <div class="header">
+            <a href="/results" class="back-link">← Back to Results</a>
+            <h1 class="title">📉 Price Chart with Trade Signals</h1>
+            <div></div>
+        </div>
+
+        <div class="chart-card">
+            <div id="loadingIndicator" class="loading">
+                <div class="spinner"></div>
+                <div>Loading chart data...</div>
+            </div>
+            <div class="chart-container" id="chartContainer" style="display: none;">
+                <canvas id="priceChart"></canvas>
+            </div>
+            <div class="pagination-controls">
+                <button class="page-btn" id="prevBtn" onclick="changePage(-1)">◀ Previous</button>
+                <div class="page-info" id="pageInfo">Page 1 of 1</div>
+                <button class="page-btn" id="nextBtn" onclick="changePage(1)">Next ▶</button>
+            </div>
+            <div class="zoom-info">
+                💡 Use mouse wheel to zoom, drag to pan
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if (window['chartjs-plugin-zoom']) {
+            Chart.register(window['chartjs-plugin-zoom']);
+        }
+
+        let priceChart = null;
+        let sessionId = null;
+        let currentPage = 0;
+        let totalPages = 1;
+
+        window.addEventListener('DOMContentLoaded', async function() {
+            console.log('Loading price chart page...');
+            
+            try {
+                const response = await fetch('/api/get_results');
+                
+                if (!response.ok) {
+                    throw new Error('No backtest data found');
+                }
+
+                const backtestData = await response.json();
+                console.log('Backtest data loaded:', backtestData);
+                
+                sessionId = backtestData.sessionId;
+                totalPages = backtestData.pagination.totalPages;
+                
+                console.log(`Session ID: ${sessionId}, Total Pages: ${totalPages}`);
+                
+                await loadPage(0);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('No backtest data found. Redirecting to results page.');
+                window.location.href = '/results';
+            }
+        });
+
+        async function loadPage(page) {
+            try {
+                console.log(`Loading page ${page}...`);
+                const response = await fetch(`/api/get_page/${sessionId}/${page}`);
+                
+                if (!response.ok) {
+                    console.error('Response not OK:', response.status, response.statusText);
+                    throw new Error('Failed to load page');
+                }
+                
+                const data = await response.json();
+                console.log('Page data received:', data);
+                
+                currentPage = data.pagination.currentPage;
+                totalPages = data.pagination.totalPages;
+                
+                if (priceChart) {
+                    console.log('Updating existing chart...');
+                    updateChart(data);
+                } else {
+                    console.log('Creating new chart...');
+                    createChart(data);
+                }
+                
+                updatePaginationControls();
+                
+            } catch (error) {
+                console.error('Error loading page:', error);
+                alert('Failed to load chart data: ' + error.message);
+            }
+        }
+
+        async function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage < 0 || newPage >= totalPages) return;
+            await loadPage(newPage);
+        }
+
+        function updatePaginationControls() {
+            document.getElementById('pageInfo').textContent = `Page ${currentPage + 1} of ${totalPages}`;
+            document.getElementById('prevBtn').disabled = currentPage === 0;
+            document.getElementById('nextBtn').disabled = currentPage === totalPages - 1;
+        }
+
+        function createChart(data) {
+            console.log('Creating chart with data:', data);
+            
+            const ctx = document.getElementById('priceChart');
+            if (!ctx) {
+                console.error('Canvas element not found!');
+                return;
+            }
+            
+            const context = ctx.getContext('2d');
+
+            const timestampMap = {};
+            data.priceData.timestamps.forEach((ts, idx) => {
+                timestampMap[ts] = idx;
+            });
+
+            const buyScatter = data.trades.buy.map(t => ({
+                x: timestampMap[t.timestamp],
+                y: t.price
+            }));
+
+            const sellScatter = data.trades.sell.map(t => ({
+                x: timestampMap[t.timestamp],
+                y: t.price
+            }));
+
+            console.log(`Chart data: ${data.priceData.close.length} price points, ${buyScatter.length} buys, ${sellScatter.length} sells`);
+
+            const chartConfig = {
+                type: 'line',
+                data: {
+                    labels: data.priceData.timestamps.map((_, i) => i),
+                    datasets: [
+                        {
+                            label: 'Close Price',
+                            data: data.priceData.close,
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'BUY',
+                            data: buyScatter,
+                            backgroundColor: 'rgba(16, 185, 129, 1)',
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            pointStyle: 'triangle',
+                            pointRadius: 10,
+                            showLine: false,
+                            type: 'scatter'
+                        },
+                        {
+                            label: 'SELL',
+                            data: sellScatter,
+                            backgroundColor: 'rgba(239, 68, 68, 1)',
+                            borderColor: 'rgba(239, 68, 68, 1)',
+                            pointStyle: 'triangle',
+                            pointRotation: 180,
+                            pointRadius: 10,
+                            showLine: false,
+                            type: 'scatter'
+                        }
+                    ]
+                },
+                options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { 
+                display: true, 
+                position: 'top',
+                labels: { 
+                    font: { size: 14 },
+                    color: 'rgba(255, 255, 255, 0.9)'  // White legend text
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    title: (ctx) => data.priceData.timestamps[ctx[0].parsed.x],
+                    label: (ctx) => `${ctx.dataset.label}: ₹${ctx.parsed.y.toFixed(2)}`
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.15)',  // Whitish grid lines
+                    borderColor: 'rgba(255, 255, 255, 0.3)',  // White border
+                    lineWidth: 1
+                },
+                title: { 
+                    display: true, 
+                    text: 'Time', 
+                    font: { size: 16, weight: 'bold' },
+                    color: 'rgba(255, 255, 255, 0.9)'  // White title
+                },
+                ticks: {
+                    callback: (val) => {
+                        const idx = Math.floor(val);
+                        return idx >= 0 && idx < data.priceData.timestamps.length 
+                            ? data.priceData.timestamps[idx].split(' ')[0] 
+                            : '';
+                    },
+                    maxRotation: 45,
+                    minRotation: 45,
+                    font: { size: 12 },
+                    color: 'rgba(255, 255, 255, 0.8)'  // White tick labels
+                }
+            },
+            y: {
+                grid: {
+                    color: 'rgba(255, 255, 255, 0.2)',
+                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    lineWidth: 1,
+                    drawTicks: true,
+                    tickColor: 'rgba(255, 255, 255, 0.3)'
+                    }
+            }
+        }
+    }
+};
+
+            // Add zoom plugin if available
+            if (window['chartjs-plugin-zoom']) {
+    Chart.register(window['chartjs-plugin-zoom'].default || window['chartjs-plugin-zoom']);
+            }
+            chartConfig.options.plugins.zoom = {
+    zoom: {
+        wheel: { enabled: true },
+        pinch: { enabled: true },
+        mode: 'x',
+    },
+    pan: {
+        enabled: true,
+        mode: 'x',
+    },
+    limits: {
+        x: { min: 'original', max: 'original' },
+        y: { min: 'original', max: 'original' }
+    }
+};
+
+            priceChart = new Chart(context, chartConfig);
+            console.log('Chart created successfully!');
+            
+            // Hide loading, show chart
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('chartContainer').style.display = 'block';
+        }
+
+        function updateChart(data) {
+            const timestampMap = {};
+            data.priceData.timestamps.forEach((ts, idx) => {
+                timestampMap[ts] = idx;
+            });
+
+            const buyScatter = data.trades.buy.map(t => ({
+                x: timestampMap[t.timestamp],
+                y: t.price
+            }));
+
+            const sellScatter = data.trades.sell.map(t => ({
+                x: timestampMap[t.timestamp],
+                y: t.price
+            }));
+
+            priceChart.data.labels = data.priceData.timestamps.map((_, i) => i);
+            priceChart.data.datasets[0].data = data.priceData.close;
+            priceChart.data.datasets[1].data = buyScatter;
+            priceChart.data.datasets[2].data = sellScatter;
+            
+            priceChart.options.scales.x.ticks.callback = function(val) {
+                const idx = Math.floor(val);
+                return idx >= 0 && idx < data.priceData.timestamps.length 
+                    ? data.priceData.timestamps[idx].split(' ')[0] 
+                    : '';
+            };
+            
+            priceChart.options.plugins.tooltip.callbacks.title = function(ctx) {
+                return data.priceData.timestamps[ctx[0].parsed.x];
+            };
+            
+            priceChart.resetZoom();
+            priceChart.update();
+        }
+    </script>
+</body>
+</html>

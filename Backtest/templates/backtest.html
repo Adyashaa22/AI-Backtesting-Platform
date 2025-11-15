@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trading Platform - Home</title>
+    <link rel="stylesheet" href="/static/allover.css">
+</head>
+<body>
+<div class="background"></div>
+<div class="overlay"></div>
+
+<div class="container">
+    <a href="/" id="back-btn" class="back-btn">← Back to Home</a>
+    <div class="header">
+        <h1>AI Trading Platform</h1>
+        <p>Choose how you want to start your backtesting journey</p>
+    </div>
+
+    <div class="options-grid">
+        <!-- Option 1: User already has data -->
+        <div class="option-card" onclick="location.href='/backtesting'">
+            <span class="option-icon">📁</span>
+            <h2 class="option-title">I Have the Data File</h2>
+            <p class="option-description">
+                Upload your own CSV dataset and configure parameters to run a full backtest.
+            </p>
+            <button class="option-btn">Upload & Backtest</button>
+        </div>
+
+        <!-- Option 2: User doesn’t have data -->
+        <div class="option-card" onclick="location.href='/fetchdata'">
+            <span class="option-icon">📦</span>
+            <h2 class="option-title">I Don’t Have the Data File</h2>
+            <p class="option-description">
+                Use sample data provided by the system to explore how backtesting works.
+            </p>
+            <button class="option-btn">Fetch the Data</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>

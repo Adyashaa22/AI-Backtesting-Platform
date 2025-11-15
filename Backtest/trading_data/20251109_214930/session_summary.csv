@@ -1,0 +1,34 @@
+=== SESSION INFORMATION ===
+Session ID,20251109_214930
+Stock,RELIANCE
+Timeframe (min),1
+Brokerage (%),0.05
+Order Quantity,10
+
+=== ACCOUNT METRICS ===
+Initial Balance,100000.0
+Final Balance,74179.79679999995
+Portfolio Value,99221.0
+Total P&L,-779.0
+Total P&L %,-0.78
+Current Position,10
+
+=== TRADING STATISTICS ===
+Total Trades,31
+Winning Trades,0
+Losing Trades,31
+Win Rate (%),0.0
+Avg Win,0
+Avg Loss,24.94
+Largest Win,0
+Largest Loss,-43.63
+Profit Factor,0.0
+Expectancy,-24.94
+Avg Hold Time (min),0.63
+
+=== RISK METRICS ===
+Sharpe Ratio,-4.2
+Max Drawdown (%),0.79
+
+=== GENERATED ===
+Timestamp,2025-11-09 22:14:14
